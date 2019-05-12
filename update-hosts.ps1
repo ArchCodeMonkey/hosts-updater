@@ -52,6 +52,8 @@ While (($Heartbeat -ne [VMHeartbeatStatus]::OkApplicationsHealthy) -and ($Heartb
    $Heartbeat = $TargetVM.HeartBeat
 }
 
+Start-Sleep -s 1
+
 # NOTE: Use InterNetworkV6 for IPv6 addresses
 $VMIPAddress = (Get-VMNetworkAdapter -VMName $VMName).IPAddresses | Where-Object { ([IPAddress]$_).AddressFamily -eq [AddressFamily]::InterNetwork }
 
