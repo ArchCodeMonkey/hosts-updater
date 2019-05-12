@@ -32,10 +32,15 @@ $HOSTS_TEMPLATE = "C:\Windows\System32\drivers\etc\hosts.template"
 
 $TargetVM = Get-VM -Name $VMName
 
-If ($TargetVM.State -eq [VMState]::Off)
+If ($TargetVM.State -eq [VMState]::Off -or $TargetVM.State -eq [VMState]::Saved)
 {
    Write-Host "Starting virtual machine '$VMName'"
    Start-VM -Name $VMName
+}
+ElseIf ($TargetVM.State -eq [VMState]::Paused)
+{
+   Write-Host "Resuming paused virtual machine '$VMName'"
+   Resume-VM -Name $VMName
 }
 
 $Heartbeat = $TargetVM.HeartBeat
