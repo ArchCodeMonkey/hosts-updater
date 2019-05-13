@@ -54,11 +54,18 @@ While (($Heartbeat -ne [VMHeartbeatStatus]::OkApplicationsHealthy) -and ($Heartb
 
 Start-Sleep -s 1
 
-# NOTE: Use InterNetworkV6 for IPv6 addresses
-$VMIPAddress = (Get-VMNetworkAdapter -VMName $VMName).IPAddresses | Where-Object { ([IPAddress]$_).AddressFamily -eq [AddressFamily]::InterNetwork }
+$TemplateData = Get-Content -Path $HOSTS_TEMPLATE
 
-If ($VMIPAddress -ne $null)
-{
-   Write-Host "Generating hosts file with virtual machine IP '$VMIPAddress'"
-   (Get-Content -Path $HOSTS_TEMPLATE) | ForEach-Object { $_ -Replace "^#$VMName#", $VMIPAddress } | Out-File $HOSTS_FILE
+Get-VM | Where-Object { $_.State -eq [VMState]::Running } | ForEach-Object {
+   $MachineName = $_.Name
+   # NOTE: Use InterNetworkV6 for IPv6 addresses
+   $IPAddress = (Get-VMNetworkAdapter -VMName $MachineName).IPAddresses | Where-Object { ([IPAddress]$_).AddressFamily -eq [AddressFamily]::InterNetwork }
+
+   If ($IPAddress -ne $null)
+   {
+      Write-Host "Adding IP '$IPAddress' for VM '$MachineName' to hosts file"
+      $TemplateData = ForEach-Object { $_ -Replace "^#$MachineName#", $IPAddress } -InputObject $TemplateData
+   }
 }
+
+Set-Content -Path $HOSTS_FILE -Value $TemplateData
