@@ -1,9 +1,9 @@
 <#
    .SYNOPSIS
-   This script updates the hosts file with the current IP address of a Hyper-V virtual machine
+   This script updates the hosts file with the current IP address of running Hyper-V virtual machines
 
    .PARAMETER VMName
-   The name of the Hyper-V virtual machine 
+   The name of a Hyper-V virtual machine to start (optional)
 
    .NOTES
    The Hyper-V Default Switch is recreated every time the host machine is restarted.
@@ -20,7 +20,7 @@ using namespace Microsoft.HyperV.PowerShell
 using namespace System.Net.Sockets
 
 
-param ([Parameter(Mandatory=$true)][string]$VMName)
+param ([string]$VMName)
 
 
 # The location of the hosts file
@@ -30,29 +30,40 @@ $HOSTS_FILE = "C:\Windows\System32\drivers\etc\hosts"
 $HOSTS_TEMPLATE = "C:\Windows\System32\drivers\etc\hosts.template"
 
 
-$TargetVM = Get-VM -Name $VMName
-
-If ($TargetVM.State -eq [VMState]::Off -or $TargetVM.State -eq [VMState]::Saved)
+If ( -not [string]::IsNullOrEmpty($VMName))
 {
-   Write-Host "Starting virtual machine '$VMName'"
-   Start-VM -Name $VMName
-}
-ElseIf ($TargetVM.State -eq [VMState]::Paused)
-{
-   Write-Host "Resuming paused virtual machine '$VMName'"
-   Resume-VM -Name $VMName
-}
+   Try
+   {
+      $TargetVM = Get-VM -Name $VMName -ErrorAction Stop
+   }
+   Catch [VirtualizationException]
+   {
+      Write-Host "Problem locating virtual machine '$VMName'"
+   }
 
-$Heartbeat = $TargetVM.HeartBeat
+   If ($TargetVM -ne $null)
+   {
+      If ($TargetVM.State -eq [VMState]::Off -or $TargetVM.State -eq [VMState]::Saved)
+      {
+         Write-Host "Starting virtual machine '$VMName'"
+         Start-VM -Name $VMName
+      }
+      ElseIf ($TargetVM.State -eq [VMState]::Paused)
+      {
+         Write-Host "Resuming paused virtual machine '$VMName'"
+         Resume-VM -Name $VMName
+      }
 
-While (($Heartbeat -ne [VMHeartbeatStatus]::OkApplicationsHealthy) -and ($Heartbeat -ne [VMHeartbeatStatus]::OkApplicationsUnknown))
-{
-   Write-Host "Waiting for the virtual machine to finish booting..."
-   Start-Sleep -s 1
-   $Heartbeat = $TargetVM.HeartBeat
+      $Heartbeat = $TargetVM.HeartBeat
+
+      While (($Heartbeat -ne [VMHeartbeatStatus]::OkApplicationsHealthy) -and ($Heartbeat -ne [VMHeartbeatStatus]::OkApplicationsUnknown))
+      {
+         Write-Host "Waiting for the virtual machine to finish booting..."
+         Start-Sleep -s 1
+         $Heartbeat = $TargetVM.HeartBeat
+      }
+   }
 }
-
-Start-Sleep -s 1
 
 $TemplateData = Get-Content -Path $HOSTS_TEMPLATE
 
