@@ -2,9 +2,9 @@
 
 The Hyper-V "Default Switch" provides an out of the box virtual network with NAT enabled to simplify creation of basic virtual machines. Unfortunately, it is recreated every time the host machine is restarted and uses a completely different IP address range each time. This causes problems when attempting to use the Windows *hosts* file to create entries that point to a test server running on a virtual machine.
 
-This script updates the *hosts* file with the current IP address of a specified Hyper-V virtual machine. This allows creating entries to enable access to local development web sites from the browser or SSH access to the virtual server without having to first identify the current IP address.
+This script updates the *hosts* file with the current IP address of any running Hyper-V virtual machines. This allows creating entries to enable access to local development web sites from the browser or SSH access to the virtual server without having to first identify the current IP address.
 
-**NOTE:** The virtual machine must be running for it to have an IP address, this script will attempt to start the virtual machine if it is not already active.
+**NOTE:** The virtual machine must be running for it to have an IP address, this script can optionally attempt to start a specified virtual machine if it is not already active.
 
 ## Setup
 
@@ -19,7 +19,9 @@ Make a copy of the current *hosts* file and call it `hosts.template`. Update thi
 
 ## Usage
 
-The script takes the virtual machine name as a parameter, if the virtual machine name contains spaces then it must be enclosed in quotes. It requires administrator privileges to run and also has not been digitally signed, which will conflict with the default PowerShell Execution Policy.
+By default, this script will look for any currently running Hyper-V virtual machines and update the *hosts* file with the IP address, providing there is a corresponding entry in the `hosts.template` file. It requires administrator privileges to run and also has not been digitally signed, which may conflict with the system PowerShell Execution Policy.
+
+The script optionally takes a virtual machine name as a parameter, if the virtual machine name contains spaces then it must be enclosed in quotes. 
 
 The simplest way to manage these requirements is to create a shortcut to the script in a convenient location. In the shortcut properties, select the *"Shortcut"* tab and enter the following into the *"Target"* field.
 
