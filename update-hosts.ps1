@@ -17,10 +17,13 @@
 
 
 using namespace Microsoft.HyperV.PowerShell
+using namespace System.IO
 using namespace System.Net.Sockets
 
 
 param ([string]$VMName)
+
+Set-StrictMode -Version Latest
 
 
 # The location of the hosts file
@@ -28,6 +31,49 @@ $HOSTS_FILE = "C:\Windows\System32\drivers\etc\hosts"
 
 # The location of the template file to use when generating a new hosts file
 $HOSTS_TEMPLATE = "C:\Windows\System32\drivers\etc\hosts.template"
+
+
+function Get-VMIPAddress([string] $MachineName)
+{
+   <#
+      .SYNOPSIS
+      This method determines the IP address of a virtual machine
+
+      .PARAMETER MachineName
+      The name of the virtual machine
+
+      .OUTPUTS
+      The IP address of the virtual machine
+
+      .NOTES
+      If the virtual machine has only just booted then it can take a while to start reporting its IP address.
+      Depending on the startup load it may be neccessary to give it more time to stabilise.
+
+      Without the "linux-cloud-tools-virtual" package a Linux guest may not be able to report its IP address.
+   #>
+
+   $MAX_RETRY = 15
+
+   Write-Host "Querying virtual machine '$MachineName' for IP Address"
+
+   $IPAddress = ''
+   $RetryCount = 0
+
+   While ([string]::IsNullOrEmpty($IPAddress) -and $RetryCount -lt $MAX_RETRY)
+   {
+      # NOTE: Use InterNetworkV6 for IPv6 addresses
+      $IPAddress = (Get-VMNetworkAdapter -VMName $MachineName).IPAddresses | Where-Object { ([IPAddress]$_).AddressFamily -eq [AddressFamily]::InterNetwork }
+
+      If ([string]::IsNullOrEmpty($IPAddress))
+      {
+         Write-Host "Waiting for IP Address..."
+         Start-Sleep -s 1
+         $RetryCount++
+      }
+   }
+
+   return $IPAddress
+}
 
 
 If ( -not [string]::IsNullOrEmpty($VMName))
@@ -65,18 +111,22 @@ If ( -not [string]::IsNullOrEmpty($VMName))
    }
 }
 
-$TemplateData = Get-Content -Path $HOSTS_TEMPLATE
+# NOTE: Using .NET File methods as PowerShell methods have been unreliable
+$TemplateData = [File]::ReadAllText($HOSTS_TEMPLATE)
 
 Get-VM | Where-Object { $_.State -eq [VMState]::Running } | ForEach-Object {
    $MachineName = $_.Name
-   # NOTE: Use InterNetworkV6 for IPv6 addresses
-   $IPAddress = (Get-VMNetworkAdapter -VMName $MachineName).IPAddresses | Where-Object { ([IPAddress]$_).AddressFamily -eq [AddressFamily]::InterNetwork }
+   $IPAddress = Get-VMIPAddress($MachineName)
 
-   If ($IPAddress -ne $null)
+   If ( -not [string]::IsNullOrEmpty($IPAddress))
    {
-      Write-Host "Adding IP '$IPAddress' for VM '$MachineName' to hosts file"
-      $TemplateData = ForEach-Object { $_ -Replace "^#$MachineName#", $IPAddress } -InputObject $TemplateData
+      Write-Host "Adding IP '$IPAddress' for virtual machine '$MachineName' to hosts file"
+      $TemplateData = $TemplateData -Replace "#$MachineName#", $IPAddress
+   }
+   Else
+   {
+      Write-Host "Could not determine IP Address for virtual machine '$MachineName'"
    }
 }
 
-Set-Content -Path $HOSTS_FILE -Value $TemplateData
+[File]::WriteAllText($HOSTS_FILE, $TemplateData)
