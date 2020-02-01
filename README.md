@@ -15,7 +15,7 @@ Make a copy of the current *hosts* file and call it `hosts.template`. Update thi
 #{VM_NAME}# mytestingsite.local
 ```
 
-**NOTE:** If the virtual machine contains a Linux guest then the `linux-cloud-tools-virtual` package may be required to enable interogating the virtual machine for its IP address.
+**NOTE:** If the virtual machine contains a Linux guest then the `linux-cloud-tools-virtual` (Ubuntu) or `hyperv-daemons` (CentOS) package may be required to enable interogating the virtual machine for its IP address.
 
 ## Usage
 
