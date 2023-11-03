@@ -26,11 +26,35 @@ The script optionally takes a virtual machine name as a parameter, if the virtua
 The simplest way to manage these requirements is to create a shortcut to the script in a convenient location. In the shortcut properties, select the *"Shortcut"* tab and enter the following into the *"Target"* field.
 
 ```
-powershell.exe -ExecutionPolicy Bypass -File "path\to\script\update-hosts.ps1" -VMName "Virtual Machine Name"
+powershell.exe -ExecutionPolicy Bypass -File "PATH\TO\SCRIPT\update-hosts.ps1" -VMName "Virtual Machine Name"
 ```
 
 On the same tab, click the *"Advanced..."* button and select the *"Run as administrator"* checkbox.
 
 This shortcut can then be used to run the script and it will trigger a UAC prompt to allow administor privileges.
+
+## Automatically update hosts on VM start
+
+A little more advanced but also very convenient option is to run the script automatically everytime a Hyper-V machine starts. This can be accomplished using the TaskScheduler:
+
+Open "Task Scheduler", click "Create Task..." on the right side.  The
+important fields are listed below:
+
+- General
+	* Name: anything
+	* Security options: Run whether user is logged on or not.
+	* Check "Run with highest priviledges".
+- Triggers, click "New...":
+	* Begin the task: On an event
+	* Settings: Basic
+	* Log: Microsoft-Windows-Hyper-V-Worker/Admin
+	* Source: Hyper-V-Worker
+	* Event ID: 18500
+- Actions, click New...
+	* Action: Start a program.
+	* Program/script: `powershell.exe`
+	* Add arguments: `-WindowStyle hidden -ExecutionPolicy Bypass -File "PATH\TO\SCRIPT\update-hosts.ps1" -VMName "Virtual Machine Name"`
+
+This will run the script in a hidden powershell window everytime event 18500 (Hyper-V VM start) fires.
 
 **NOTE:** Antivirus software can block access to the *hosts* file to help prevent malware from making malicious changes. It will be neccessary to disable any such feature to allow this script to execute successfully.
